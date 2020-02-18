@@ -1020,13 +1020,17 @@ module Puma
       while true
         begin
           n = io.syswrite str
-        rescue Errno::EAGAIN, Errno::EWOULDBLOCK
+        rescue Errno::EAGAIN, Errno::EWOULDBLOCK => e
+          debug "fast_write: error: #{e}"
           if !IO.select(nil, [io], nil, WRITE_TIMEOUT)
+            debug "fast_write: select returned nil"
             raise ConnectionError, "Socket timeout writing data"
           end
 
+          debug "fast_write: select retry"
           retry
-        rescue  Errno::EPIPE, SystemCallError, IOError
+        rescue  Errno::EPIPE, SystemCallError, IOError => e
+          debug "fast_write: error: #{e}"
           raise ConnectionError, "Socket timeout writing data"
         end
 
@@ -1035,6 +1039,10 @@ module Puma
       end
     end
     private :fast_write
+
+    def debug(msg)
+      @events.debug "#{Time.now.strftime("%H:%M:%S.%3N")} - #{msg}"
+    end
 
     ThreadLocalKey = :puma_server
 
